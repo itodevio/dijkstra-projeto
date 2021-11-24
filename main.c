@@ -21,11 +21,11 @@ typedef struct vert
 { /* Cada vertice tem um ponteiro para uma lista de arestas incidentes nele */
   int nome;
   int cont;
-  char *label;
   Aresta *menor;
   Aresta *prim;
 } Vertice;
 
+// Estrutura para controlar as rotas (permutacoes das ordem dos locais)
 typedef struct rota
 {
   int total;
@@ -39,9 +39,16 @@ void criaGrafo(Vertice **G, int ordem);
 void destroiGrafo(Vertice **G, int ordem);
 int acrescentaAresta(Vertice G[], int ordem, int v1, int v2, int cost);
 void imprimeGrafo(Vertice G[], int ordem);
-void dijkstra(Vertice G[], int ordem);
+void dijkstra(Vertice G[], int ordem, int origem, int *dist, int *vertice_anterior);
+int menor_indice(int ordem, int* dist, int* visitados);
+int fatorial(int fat);
+void swap(int *a, int *b);
+void permutar(int *arr, int start, int end);
 
-#define lugares 3
+int **permutacoes;
+int permutacaoIdx = 0;
+
+#define lugares 4
 
 /*
  * Programinha simples para testar a representacao de grafo
@@ -53,6 +60,7 @@ int main(int argc, char *argv[])
 
   int localesIndex[11] = {0, 2, 3, 5, 6, 7, 8, 11, 24, 31, 34};
   char localesNames[11][50] = {"Casa", "Natural da Terra", "Brasfor", "Igreja Betesda", "Losinox", "CM Comandos Lineares", "IMI Nogren", "Campo do Anhanguera", "Flores Martinho", "Catedral do Livro", "Comercial Nova Fatima"};
+  Rota *rotas = (Rota*) malloc(sizeof(Rota) * fatorial(lugares));
 
   criaGrafo(&G, ordemG);
   acrescentaAresta(G, ordemG, 0, 1, 130);
@@ -100,47 +108,107 @@ int main(int argc, char *argv[])
 
   // imprimeGrafo(G, ordemG);
 
+  // ALTERAR DEFINE LUGARES NO TOPO DO ARQUIVO CASO FOR MUDAR A QUANTIDADE DE LUGARES
   // Lista dos indices (numeros inteiros) dos lugares a serem visitados
   int visitar[lugares];
 
   // Lugares a serem visitados >excluindo< a casa
-  char labels[lugares][50] = {"Brasfor", "Natural da Terra", "Campo do Anhanguera"};
+  char labels[lugares][50] = {"Brasfor", "Natural da Terra", "Campo do Anhanguera", "Casa"};
 
+  // Adicionando indices dos lugares na lista de visitas
   for (int i = 0; i < lugares; i++)
   {
     for (int j = 0; j < 11; j++)
     {
       if (!strcmp(labels[i], localesNames[j]))
       {
-        printf("%s => %s\n", labels[i], localesNames[j]);
         visitar[i] = localesIndex[j];
         break;
       }
     }
   }
 
-  for (int i = 0; i < 3; i++)
-  {
-    printf("%d\n", visitar[i]);
+  // Alocando memoria para a matrix de permutacoes (quantidade de linhas: lugares! (fatorial) quantidade de colunas: lugares)
+  permutacoes = (int **)malloc(fatorial(lugares) * sizeof(int *));
+  for (int i = 0; i < fatorial(lugares); i++)
+    permutacoes[i] = (int *)malloc(lugares * sizeof(int));
+
+  // Preenchendo a matriz de permutacoes
+  permutar(visitar, 0, lugares - 1);
+
+  int *dist = (int*) malloc(sizeof(int) * ordemG);
+  int *vertice_anterior = (int*) malloc(sizeof(int) * ordemG);
+
+  int current_origin = permutacoes[0][0];
+
+  for (int i=0; i < lugares; i++) {
+    dijkstra(G, ordemG, visitar[i], dist, vertice_anterior);
+
+    for (int j=0; j < fatorial(lugares); j++) {
+      if (permutacoes[j][0] != visitar[i]) {
+        continue;
+      }
+
+      //! percorrer dist para ver se o caminho reverso é possivel e se passa por todos os locais
+    }
   }
 
+  dijkstra(G, ordemG, 0, dist, vertice_anterior);
+  // printf("\n IMPRIMINDO GRAFICO \n");
+  // imprimeGrafo(G, ordemG);
+  
   destroiGrafo(&G, ordemG);
-  system("PAUSE");
+  // system("PAUSE");
   return 0;
 }
 
 /*
  * Implementacao do algoritmo Dijkstra
  */
-void dijkstra(Vertice G[], int ordem)
+void dijkstra(Vertice G[], int ordem, int origem, int *dist, int *vertice_anterior)
 {
-  Aresta *aux;
-  int visitados[37];
-
-  for (int i = 0; i < ordem; i++)
-  {
-    aux = G[i].prim;
+  Vertice vAux;
+  Aresta *aAux;
+  
+  int *visitados = (int*) malloc(sizeof(int) * ordem);
+  
+  for (int i=0; i < ordem; i++) {
+    dist[i] = INT_MAX;
+    vertice_anterior[i] = INT_MAX;
+    visitados[i] = 0;
   }
+
+  dist[origem] = 0;
+  vertice_anterior[origem] = origem;
+
+  for (int count=0; count < ordem; count++) {
+    int menor = menor_indice(ordem, dist, visitados); //vai retornar a origem como primeiro ponto
+    visitados[menor] = 1;
+
+    aAux = G[menor].prim;
+
+    while(aAux != NULL) {
+      if (dist[menor] + aAux->cost <= dist[aAux->nome] && !visitados[aAux->nome]) {
+        dist[aAux->nome] = dist[menor] + aAux->cost;
+        vertice_anterior[aAux->nome] = menor;
+      }
+
+      aAux = aAux->prox;
+    }
+  }
+}
+
+int menor_indice(int ordem, int *dist, int *visitados) {
+  int min = INT_MAX;
+  int min_index;
+ 
+    for (int i = 0; i < ordem; i++)
+        if (visitados[i] == 0 && dist[i] <= min) {
+            min = dist[i];
+            min_index = i;
+        }
+ 
+    return min_index;
 }
 
 /*
@@ -156,15 +224,6 @@ void criaGrafo(Vertice **G, int ordem)
   {
     (*G)[i].nome = i;
     (*G)[i].prim = NULL; /* Cada vertice sem nenua aresta incidente */
-
-    if (i == 0)
-    {
-      (*G)[i].cont = 0;
-    }
-    else
-    {
-      (*G)[i].cont = INT_MAX;
-    }
   }
 }
 
@@ -243,4 +302,42 @@ void imprimeGrafo(Vertice G[], int ordem)
       printf("%3d (%3d) ", aux->nome, aux->cost);
   }
   printf("\n\n");
+}
+
+int fatorial(int fat)
+{
+  if (fat == 1)
+    return fat;
+
+  return fat * fatorial(fat - 1);
+}
+
+// Trocar dois valores de posição
+void swap(int *a, int *b)
+{
+  int temp;
+  temp = *a;
+  *a = *b;
+  *b = temp;
+}
+
+// Permutar lista
+void permutar(int *arr, int start, int end)
+{
+  if (start == end)
+  {
+    for (int i=0; i < lugares; i++)
+    {
+      permutacoes[permutacaoIdx][i] = arr[i];
+    }
+    permutacaoIdx++;
+    return;
+  }
+  int i;
+  for (i = start; i <= end; i++)
+  {
+    swap((arr + i), (arr + start));
+    permutar(arr, start + 1, end);
+    swap((arr + i), (arr + start));
+  }
 }
