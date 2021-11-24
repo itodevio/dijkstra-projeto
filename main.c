@@ -136,24 +136,28 @@ int main(int argc, char *argv[])
   // Preenchendo a matriz de permutacoes
   permutar(visitar, 0, lugares - 1);
 
-  int *dist = (int*) malloc(sizeof(int) * ordemG);
-  int *vertice_anterior = (int*) malloc(sizeof(int) * ordemG);
+  int **dist = (int**) malloc(sizeof(int*) * lugares + 1);
+  int **vertice_anterior = (int**) malloc(sizeof(int*) * lugares + 1);
 
-  int current_origin = permutacoes[0][0];
+  for (int i=0; i < lugares + 1; i++) {
+    dist[i] = (int*) malloc(sizeof(int) * ordemG);
+    vertice_anterior[i] = (int*) malloc(sizeof(int) * ordemG);
+  }
+  
+  dijkstra(G, ordemG, 0, dist[0], vertice_anterior[0]);
 
   for (int i=0; i < lugares; i++) {
-    dijkstra(G, ordemG, visitar[i], dist, vertice_anterior);
-
-    for (int j=0; j < fatorial(lugares); j++) {
-      if (permutacoes[j][0] != visitar[i]) {
-        continue;
-      }
+    dijkstra(G, ordemG, visitar[i], dist[i+1], vertice_anterior[i+1]);
+  }
+    // for (int j=0; j < fatorial(lugares); j++) {
+    //   if (permutacoes[j][0] != visitar[i]) {
+    //     continue;
+    //   }
 
       //! percorrer dist para ver se o caminho reverso é possivel e se passa por todos os locais
-    }
-  }
+    // }
 
-  dijkstra(G, ordemG, 0, dist, vertice_anterior);
+  // dijkstra(G, ordemG, 0, dist, vertice_anterior);
   // printf("\n IMPRIMINDO GRAFICO \n");
   // imprimeGrafo(G, ordemG);
   
